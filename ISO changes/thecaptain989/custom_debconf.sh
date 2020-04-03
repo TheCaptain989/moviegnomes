@@ -1,13 +1,20 @@
 #!/bin/sh
 
+# Leaned on these docs heavily
+#  https://manpages.debian.org/buster/debconf-doc/debconf-devel.7.en.html
+#  http://www.fifi.org/doc/debconf-doc/tutorial.html
+
 # This is a debconf-compatible script
 . /usr/share/debconf/confmodule
 
+# This conf script is capable of backing up
+db_capb backup
+
 # Create the template file
-cat >/tmp/moviegnomes.template <<EOF
+cat >/tmp/moviegnomes.dat <<EOF
 ### Splash screens
 Template: moviegnomes/title
-Type: text
+Type: title
 Description: TheCaptain989's Movie Gnomes (ALPHA RELEASE)
 
 Template: moviegnomes/splash
@@ -15,22 +22,22 @@ Type: note
 Description: Welcome to TheCaptain989's Movie Gnomes Installation
  This is a custom Debian Linux install designed to provide and configure all the necessary
  tools to fully automate the management of your movie, TV, and music library.
- These tools include Docker and containers for: SABnzbd, Radarr, Sonarr, Bazarr, Lidarr, and Kodi
+ These tools include Docker and containers for SABnzbd, Radarr, Sonarr, Bazarr, Lidarr, and Kodi
  .
  Capabilities include:
   - Manage your library via the web browser on your phone
-  - Add movies you want to your IMDB Watchlist to have them automatically downloaded
+  - Add movies to your IMDB Watchlist to have them automatically downloaded
   - Get the best quality movies available, rename them and keep them tidy
   - Automatically strip out unwanted audio and subtitle streams
-  - Automatically download missing subtitles, and clean downloaded subs
-  - Automatically convert downloaded FLAC music tracks to 320Kbps MP3s
+  - Automatically download missing subtitles and clean downloaded subs
+  - Automatically convert downloaded FLAC music tracks to MP3s
   - Automatically update your existing Kodi database with added movies, TV shows, and music
 
 Template: moviegnomes/splash2
 Type: note
 Description: Required Services
- This installation does require the use of internet services, a place to store downloaded content,
- and database. The default list is included below, but you may add, remove, or change these post install.
+ This installation requires the use of internet services and a place to store downloaded content.
+ The default services list is included below, but you may add, remove, or change these post install.
  .
  Required:
   - A media library location (e.g. NAS)
@@ -43,7 +50,7 @@ Description: Required Services
   - A Subscene login (https://subscene.com/)
   - An Opensubtitles login (https://www.opensubtitles.org/)
  .
- You be asked for this information on the next screens.
+ You will be asked for this information on the next screens.
 
 Template: moviegnomes/splash3
 Type: note
@@ -57,14 +64,34 @@ Description: URLs to Know
   Lidarr: http://moviegnomes:8686/
   Kodi: http://moviegnomes:8085/
  .
- You can manage the Debian host by using Webmin, or login to the Debian OS using the consle or SSH.  The username is 'user',
+ You can manage the Debian host by using Webmin, or login to the Debian OS using the console or SSH.  The username is 'user',
  and the password and root password are included in the accompanying documentation.
  .
  Webmin: https://moviegnomes:10000/
 
+### Components questions
+Template: moviegnomes/components/title
+Type: title
+Description: Movie Gnomes Components
+
+Template: moviegnomes/components/select
+Type: multiselect
+Choices: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi,MySQL
+Default: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi
+Description: Select the containers you want to install
+ The following containers are available:
+ .
+  SABnzbd - Usenet downloader (used by Radarr, Sonarr, and Lidarr to download NZB files)
+  Radarr - Movie manager and NZB scraper
+  Sonarr - TV show manager and NZB scraper
+  Bazarr - Subtitle manager and downloader (requires Radarr or Sonarr)
+  Lidarr - Music manager and NZB scraper
+  Kodi - Media library manager
+  MySQL - Media library database (used by Kodi)
+
 ### Newshosting questions
 Template: moviegnomes/news/title
-Type: text
+Type: title
 Description: Newshosting.com Credentials
 
 Template: moviegnomes/news/user
@@ -77,9 +104,13 @@ Template: moviegnomes/news/pass
 Type: password
 Description: Enter your Newshosting.com password
 
+Template: moviegnomes/news/hidden
+Type: string
+Description: NOT TO BE DISPLAYED
+
 ### Indexer questions
 Template: moviegnomes/indexer/title
-Type: text
+Type: title
 Description: NZB Indexer API Keys
 
 Template: moviegnomes/indexer/key1
@@ -100,7 +131,7 @@ Description: Enter your GingaDADDY API key
 
 ### IMDB questions
 Template: moviegnomes/imdb/title
-Type: text
+Type: title
 Description: IMDB List ID
 
 Template: moviegnomes/imdb/list
@@ -115,7 +146,7 @@ Description: Enter your IMDB List ID
 
 ### Kodi questions
 Template: moviegnomes/kodi/title
-Type: text
+Type: title
 Description: Kodi Database Info
 
 Template: moviegnomes/kodi/host
@@ -124,34 +155,64 @@ Description: Enter your database hostname
  Your Kodi database is an existing MySQL or MariaDB used to store all Kodi library data.
  This can be changed later by manually editing the /docker/kodi/userdata/advancedsettings.xml file post install.
  .
- Enter the server hostname that contains the Kodi database.
+ Kodi will use this information to connect to the database.
 
 Template: moviegnomes/kodi/port
 Type: string
 Default: 3306
 Description: Enter your database port
- Enter the server port number that Kodi should use to connect to the database.
 
 Template: moviegnomes/kodi/user
 Type: string
 Default: kodi
 Description: Enter your database username
- Enter the username that Kodi should use to connect to the database.
+ Kodi will use these credentials to connect to the database.
 
 Template: moviegnomes/kodi/pass
 Type: password
 Description: Enter your database password
- Enter the password that Kodi should use to connect to the database.
+
+Template: moviegnomes/kodi/hidden
+Type: string
+Description: NOT TO BE DISPLAYED
+
+### MySQL questions
+Template: moviegnomes/mysql/title
+Type: title
+Description: MySQL Database info
+
+Template: moviegnomes/mysql/placeholder
+Type: text
+Description: Yet...
+ THERE'S NOTHING TO SEE HERE
 
 ### Library questions
 Template: moviegnomes/library/title
-Type: text
+Type: title
 Description: Library Information
+
+Template: moviegnomes/library/user
+Type: string
+Description: Enter your media library username
+ These credentials will be used to connect the Debian host and Kodi to your media libraries.
+ NOTE: The same username and password will be used for all libraries
+ (movie, TV, music).
+ .
+ Also note, this username should have read-write access to the libraries.
+
+Template: moviegnomes/library/pass
+Type: password
+Description: Enter your media library password
+
+Template: moviegnomes/library/hidden
+Type: string
+Description: NOT TO BE DISPLAYED
 
 Template: moviegnomes/library/moviepath
 Type: string
-Description: Enter the fully qualified path to your movie library
- This is the fully qualified path to your movies the way Kodi accesses it. Use Linux path format!
+Default: smb://
+Description: Enter the path to your movie library
+ This is the fully qualified path to your movies in Linux path format.
  This can be changed later by manually editing the following files post install:
   /docker/kodi/userdata/sources.xml
   /docker/kodi/userdata/mediasources.xml
@@ -162,21 +223,23 @@ Description: Enter the fully qualified path to your movie library
 
 Template: moviegnomes/library/tvpath
 Type: string
-Description: Enter the fully qualified to your TV show library
- This is the fully qualified path to your TV shows the way Kodi accesses it.
+Default: smb://
+Description: Enter the path to your TV library
+ This is the fully qualified path to your TV shows.
  .
  EX: smb://my_nas/videos/TV/
 
 Template: moviegnomes/library/musicpath
 Type: string
-Description: Enter the fully qualified to your music library
- This is the fully qualified path to your music the way Kodi accesses it.
+Default: smb://
+Description: Enter the path to your music library
+ This is the fully qualified path to your music files.
  .
  EX: smb://my_nas/Music/
 
 ### Bazarr questions
 Template: moviegnomes/subs/title
-Type: text
+Type: title
 Description: Subtitle Services
 
 Template: moviegnomes/subs/subscene/user
@@ -189,6 +252,10 @@ Template: moviegnomes/subs/subscene/pass
 Type: password
 Description: Enter your Subscene password
 
+Template: moviegnomes/subs/subscene/hidden
+Type: string
+Description: NOT TO BE DISPLAYED
+
 Template: moviegnomes/subs/opensub/user
 Type: string
 Description: Enter your OpenSubtitles username
@@ -198,55 +265,191 @@ Description: Enter your OpenSubtitles username
 Template: moviegnomes/subs/opensub/pass
 Type: password
 Description: Enter your OpenSubtitles password
+
+Template: moviegnomes/subs/opensub/hidden
+Type: string
+Description: NOT TO BE DISPLAYED
+
+### Errors
+Template: moviegnomes/error/title
+Type: title
+Description: Invalid Selection
+
+Template: moviegnomes/error/bazarr
+Type: error
+Description: Selection Error
+ Bazarr requires either Radarr or Sonarr to also be installed.
+ .
+ Please correct your selections.
+
+Template: moviegnomes/error/sql
+Type: error
+Description: Selection Error
+ MySQL doesn't make sense without Kodi.
+ .
+ Please correct your selections.
+
+Template: moviegnomes/warning/title
+Type: title
+Description: Possible Selection Error
+
+Template: moviegnomes/warning/sab
+Type: error
+Description: Did you make a mistake?
+ You selected one of the managers (Radarr, Sonarr, or Lidarr) without selecting SABnzbd.
+ This is valid if you have your own download client you'd like to configure, but is unusual.
 EOF
 
 # Load the template
-db_x_loadtemplatefile /tmp/moviegnomes.template thecaptain989
+db_x_loadtemplatefile /tmp/moviegnomes.dat thecaptain989
 
-# Show splash screens
-db_settitle moviegnomes/title
-db_input critical moviegnomes/splash
-db_input critical moviegnomes/splash2
-db_go
-db_input critical moviegnomes/splash3
-db_go
+# Setting these in case we're only using the adv-preseed.cfg (manual install chosen)
+db_set netcfg/get_hostname moviegnomes
+db_set netcfg/get_domain ""
 
-# Ask Library questions
-db_settitle moviegnomes/library/title
-db_input critical moviegnomes/library/moviepath
-db_input critical moviegnomes/library/tvpath
-db_input critical moviegnomes/library/musicpath
-db_go
+# Main
+STATE=1
+while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
+  case "$STATE" in
+  1)
+    # Show splash screens
+    db_settitle moviegnomes/title
+    db_input critical moviegnomes/splash
+    db_input critical moviegnomes/splash2
+  ;;
 
-# Ask Kodi questions
-db_settitle moviegnomes/kodi/title
-db_input critical moviegnomes/kodi/host
-db_input critical moviegnomes/kodi/port
-db_input critical moviegnomes/kodi/user
-db_input critical moviegnomes/kodi/pass
-db_go
+  2)
+    # Break it up a little
+    db_input critical moviegnomes/splash3
+  ;;
 
-# Ask Newshosting questions
-db_settitle moviegnomes/news/title
-db_input critical moviegnomes/news/user
-db_input critical moviegnomes/news/pass
-db_go
+  3)
+    # Select components
+    db_settitle moviegnomes/components/title
+    db_input critical moviegnomes/components/select
+  ;;
 
-# Ask Indexer questions
-db_settitle moviegnomes/indexer/title
-db_input critical moviegnomes/indexer/key1
-db_input critical moviegnomes/indexer/key2
-db_go
+  4)
+    # Ask Library questions
+    db_settitle moviegnomes/library/title
+    db_input critical moviegnomes/library/user
+    db_input critical moviegnomes/library/pass
+    db_input critical moviegnomes/library/moviepath
+    db_input critical moviegnomes/library/tvpath
+    db_input critical moviegnomes/library/musicpath
+  ;;
 
-# Ask IMDB questions
-db_settitle moviegnomes/imdb/title
-db_input critical moviegnomes/imdb/list
-db_go
+  5)
+    if [ "$KODI" = 1 ]; then
+      # Ask Kodi questions
+      db_settitle moviegnomes/kodi/title
+      db_input critical moviegnomes/kodi/host
+      db_input critical moviegnomes/kodi/port
+      db_input critical moviegnomes/kodi/user
+      db_input critical moviegnomes/kodi/pass
+    fi
+  ;;
 
-# Ask Subtitle questions
-db_settitle moviegnomes/subs/title
-db_input critical moviegnomes/subs/subscene/user
-db_input critical moviegnomes/subs/subscene/pass
-db_input critical moviegnomes/subs/opensub/user
-db_input critical moviegnomes/subs/opensub/pass
-db_go
+  6)
+    if [ "$SQL" = 1 ]; then
+      # Ask MySQL questions
+      db_settitle moviegnomes/mysql/title
+      db_input critical moviegnomes/mysql/placeholder
+    fi
+  ;;
+
+  7)
+    if [ "$SAB" = 1 ]; then
+      # Ask Newshosting questions
+      db_settitle moviegnomes/news/title
+      db_input critical moviegnomes/news/user
+      db_input critical moviegnomes/news/pass
+    fi
+  ;;
+
+  8)
+    if [ "$RADARR" = 1 -o "$SONARR" = 1 -o "$LIDARR" = 1 ]; then
+      # Ask Indexer questions
+      db_settitle moviegnomes/indexer/title
+      db_input critical moviegnomes/indexer/key1
+      db_input critical moviegnomes/indexer/key2
+    fi
+  ;;
+
+  9)
+    if [ "$RADARR" = 1 ]; then
+      # Ask IMDB questions
+      db_settitle moviegnomes/imdb/title
+      db_input critical moviegnomes/imdb/list
+    fi
+  ;;
+
+  10)
+    if [ "$BAZARR" = 1 ]; then
+      # Ask Subtitle questions
+      db_settitle moviegnomes/subs/title
+      db_input critical moviegnomes/subs/subscene/user
+      db_input critical moviegnomes/subs/subscene/pass
+      db_input critical moviegnomes/subs/opensub/user
+      db_input critical moviegnomes/subs/opensub/pass
+    fi
+  ;;
+  esac
+
+  # Uses the return code from db_go to decide to move backwards or forwards
+  if db_go; then
+    # Additional logic to get the selected components
+    if [ "$STATE" = 3 ]; then
+      db_get moviegnomes/components/select
+      SELECT=$RET
+      # Possible options
+      # SELECT=SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi,MySQL
+      SAB=0; RADARR=0; SONARR=0; BAZARR=0; LIDARR=0; KODI=0; SQL=0
+      while read VALUE; do
+        [ "$VALUE" = "SABnzbd" ] && SAB=1
+        [ "$VALUE" = "Radarr" ] && RADARR=1
+        [ "$VALUE" = "Sonarr" ] && SONARR=1
+        [ "$VALUE" = "Bazarr" ] && BAZARR=1
+        [ "$VALUE" = "Lidarr" ] && LIDARR=1
+        [ "$VALUE" = "Kodi" ] && KODI=1
+        [ "$VALUE" = "MySQL" ] && SQL=1
+      done <<EOF
+# Has to be done this way. If you use a pipe the variables cannot be modified in the resulting subshell
+$(echo "$SELECT" | tr ',' '\n' | sed -e 's/^[[:space:]]*//')
+EOF
+    fi
+    
+    # Invalid selections
+    if [ "$BAZARR" = 1 -a "$RADARR" != 1 -a "$SONARR" != 1 ]; then
+      db_settitle moviegnomes/error/title
+      db_input critical moviegnomes/error/bazarr
+      db_go
+      STATE=$(($STATE - 1))
+    elif [ "$SQL" = 1 -a "$KODI" != 1 ]; then
+      db_settitle moviegnomes/error/title
+      db_input critical moviegnomes/error/sql
+      db_go
+      STATE=$(($STATE - 1))
+    elif [ "$SAB" != 1 ] && [ "$RADARR" = 1 -o "$SONARR" = 1 -o "$LIDARR" = 1 ]; then
+      db_settitle moviegnomes/warning/title
+      db_input critical moviegnomes/warning/sab
+      db_go
+    fi
+
+    STATE=$(($STATE + 1))
+  else
+    STATE=$(($STATE - 1))
+  fi
+done
+
+# This is cheap, but templates with Type: password are not stored in questions.dat
+db_get moviegnomes/news/pass
+db_set moviegnomes/news/hidden $RET
+db_get moviegnomes/kodi/pass
+db_set moviegnomes/kodi/hidden $RET
+db_get moviegnomes/library/pass
+db_set moviegnomes/library/hidden $RET
+db_get moviegnomes/subs/subscene/pass
+db_set moviegnomes/subs/subscene/hidden $RET
+db_get moviegnomes/subs/opensub/pass
+db_set moviegnomes/subs/opensub/hidden $RET
