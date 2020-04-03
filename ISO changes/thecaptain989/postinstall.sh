@@ -14,7 +14,7 @@ cat > /target/etc/init.d/firstboot <<EOF
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: A prep script that runs once
-# Description:       A script for TheCaptain989's Debian Movie Gnomes build
+# Description:       A script for TheCaptain989's Movie Gnomes build
 ### END INIT INFO
 
 cd /root ; /usr/bin/nohup bash -x /root/firstboot.sh &
@@ -24,4 +24,4 @@ EOF
 chmod +x /target/etc/init.d/firstboot
 chroot /target update-rc.d firstboot defaults
 
-echo "Finished postinstall.sh"
+exit 0
