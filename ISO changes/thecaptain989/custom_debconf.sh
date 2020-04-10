@@ -25,25 +25,26 @@ Description: Welcome to TheCaptain989's Movie Gnomes Installation
  These tools include Docker and containers for SABnzbd, Radarr, Sonarr, Bazarr, Lidarr, and Kodi
  .
  Capabilities include:
-  - Manage your library via the web browser on your phone
+  - Manage your library via any web browser, even your phone
   - Add movies to your IMDB Watchlist to have them automatically downloaded
-  - Get the best quality movies available, rename them and keep them tidy
+  - Rename your videos and keep them tidy
   - Automatically strip out unwanted audio and subtitle streams
   - Automatically download missing subtitles and clean downloaded subs
   - Automatically convert downloaded FLAC music tracks to MP3s
-  - Automatically update your existing Kodi database with added movies, TV shows, and music
+  - Automatically update your Kodi database with added movies, TV shows, and music
 
 Template: moviegnomes/splash2
 Type: note
 Description: Required Services
  This installation requires the use of internet services and a place to store downloaded content.
+ Exactly what is required is dependent upon which components you select.
  The default services list is included below, but you may add, remove, or change these post install.
  .
- Required:
-  - A media library location (e.g. NAS)
+ Requirements:
+  - A media library location (e.g. NAS or your local PC)
   - A shared Kodi database hostname, port, username, and password
     (https://kodi.wiki/view/MySQL/Setting_up_Kodi) 
-  - A Newshosting username and password (https://www.newshosting.com/)
+  - A Newshosting login (https://www.newshosting.com/)
   - An NZBgeek API key (https://nzbgeek.info/)
   - A GingaDADDY API key (https://www.gingadaddy.com/)
   - An IMDB Watchlist ID (https://www.imdb.com/)
@@ -55,8 +56,8 @@ Description: Required Services
 Template: moviegnomes/splash3
 Type: note
 Description: URLs to Know
- To access the various applications running in the Docker containers, and to make configuration
- changes post install, use the URLs below:
+ To access the various applications running in the Docker containers after install, and to make configuration
+ changes, use the URLs below:
   SABnzbd: http://moviegnomes:8080/
   Radarr: http://moviegnomes:7878/
   Sonarr: http://moviegnomes:8989/
@@ -65,7 +66,7 @@ Description: URLs to Know
   Kodi: http://moviegnomes:8085/
  .
  You can manage the Debian host by using Webmin, or login to the Debian OS using the console or SSH.  The username is 'user',
- and the password and root password are included in the accompanying documentation.
+ and the password, as well as the root password, are included in the accompanying documentation.
  .
  Webmin: https://moviegnomes:10000/
 
@@ -76,18 +77,16 @@ Description: Movie Gnomes Components
 
 Template: moviegnomes/components/select
 Type: multiselect
-Choices: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi,MySQL
+Choices: SABnzbd - Usenet downloader,Radarr - Movie manager and NZB scraper,Sonarr - TV show manager and NZB scraper,Bazarr - Subtitle manager and downloader,Lidarr - Music manager and NZB scraper,Kodi Headless - Media library manager,MariaDB - Media library database
+Choices-C: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi,MySQL
 Default: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi
 Description: Select the containers you want to install
- The following containers are available:
+ Some more information about the containers:
  .
-  SABnzbd - Usenet downloader (used by Radarr, Sonarr, and Lidarr to download NZB files)
-  Radarr - Movie manager and NZB scraper
-  Sonarr - TV show manager and NZB scraper
-  Bazarr - Subtitle manager and downloader (requires Radarr or Sonarr)
-  Lidarr - Music manager and NZB scraper
-  Kodi - Media library manager
-  MySQL - Media library database (used by Kodi)
+  - SABnzbd is used by Radarr, Sonarr, and Lidarr to download NZB files.
+  - Bazarr requires either Radarr or Sonarr.
+  - Kodi Headless requires a SQL database, but it can use an existing one.
+  - MariaDB is a media library database used by Kodi Headless (NOTE: not a container). Only select this if you don't already have your own database.
 
 ### Newshosting questions
 Template: moviegnomes/news/title
@@ -98,7 +97,7 @@ Template: moviegnomes/news/user
 Type: string
 Description: Enter your Newshosting.com username
  Your Newshosting.com credentials are used by SABnzbd. This can be changed later
- in the SZBnzbd configuration post install.
+ in the SZBnzbd configuration after install.
 
 Template: moviegnomes/news/pass
 Type: password
@@ -117,7 +116,7 @@ Template: moviegnomes/indexer/key1
 Type: string
 Description: Enter your NZBgeek API key
  Your NZBgeek.info API key is used by Radarr, Sonarr, and Lidarr. This can be changed
- later in the various configurations post install.
+ later in the various configurations after install.
  .
  EX: abcdef0123456789abcdef0123456789
 
@@ -125,7 +124,7 @@ Template: moviegnomes/indexer/key2
 Type: string
 Description: Enter your GingaDADDY API key
  Your GingaDADDY.com API key is used by Sonarr. This can be changed
- later in the Sonarr configuration post install.
+ later in the Sonarr configuration after install.
  .
  EX: abcdef0123456789abcdef0123456789
 
@@ -138,7 +137,7 @@ Template: moviegnomes/imdb/list
 Type: string
 Description: Enter your IMDB List ID
  Your IMDB.com Watchlist ID is used by Radarr to auto add movies. This can be changed
- later in the Radarr configuration post install.
+ later in the Radarr configuration after install.
  .
  EX: ur1234567
  .
@@ -151,11 +150,10 @@ Description: Kodi Database Info
 
 Template: moviegnomes/kodi/host
 Type: string
-Description: Enter your database hostname
- Your Kodi database is an existing MySQL or MariaDB used to store all Kodi library data.
- This can be changed later by manually editing the /docker/kodi/userdata/advancedsettings.xml file post install.
+Description: \${DBDESCSHORT}
+ \${DBDESCLONG}
  .
- Kodi will use this information to connect to the database.
+ Kodi Headless will use this information to connect to the database.
 
 Template: moviegnomes/kodi/port
 Type: string
@@ -166,7 +164,8 @@ Template: moviegnomes/kodi/user
 Type: string
 Default: kodi
 Description: Enter your database username
- Kodi will use these credentials to connect to the database.
+ Kodi Headless will use these credentials to connect to the database.
+ ${DBUSER}
 
 Template: moviegnomes/kodi/pass
 Type: password
@@ -175,16 +174,6 @@ Description: Enter your database password
 Template: moviegnomes/kodi/hidden
 Type: string
 Description: NOT TO BE DISPLAYED
-
-### MySQL questions
-Template: moviegnomes/mysql/title
-Type: title
-Description: MySQL Database info
-
-Template: moviegnomes/mysql/placeholder
-Type: text
-Description: Yet...
- THERE'S NOTHING TO SEE HERE
 
 ### Library questions
 Template: moviegnomes/library/title
@@ -208,26 +197,19 @@ Template: moviegnomes/library/hidden
 Type: string
 Description: NOT TO BE DISPLAYED
 
-Template: moviegnomes/library/moviepath
+Template: moviegnomes/library/videopath
 Type: string
 Default: smb://
-Description: Enter the path to your movie library
- This is the fully qualified path to your movies in Linux path format.
+Description: Enter the path to your video library
+ This is the fully qualified path to your videos in Linux path format. This will be used to access both movies and TV shows.
+ .
  This can be changed later by manually editing the following files post install:
   /docker/kodi/userdata/sources.xml
   /docker/kodi/userdata/mediasources.xml
   /docker/kodi/userdata/passwords.xml
   /etc/fstab
  .
- EX: smb://my_nas/videos/Movies/
-
-Template: moviegnomes/library/tvpath
-Type: string
-Default: smb://
-Description: Enter the path to your TV library
- This is the fully qualified path to your TV shows.
- .
- EX: smb://my_nas/videos/TV/
+ EX: smb://my_nas/Videos/
 
 Template: moviegnomes/library/musicpath
 Type: string
@@ -246,7 +228,7 @@ Template: moviegnomes/subs/subscene/user
 Type: string
 Description: Enter your Subscene username
  Your Subscene.com login is used by Bazarr. This can be changed
- later in the Bazarr configuration post install.
+ later in the Bazarr configuration after install.
 
 Template: moviegnomes/subs/subscene/pass
 Type: password
@@ -260,7 +242,7 @@ Template: moviegnomes/subs/opensub/user
 Type: string
 Description: Enter your OpenSubtitles username
  Your OpenSubtitles.org login is used by Bazarr. This can be changed
- later in the Bazarr configuration post install.
+ later in the Bazarr configuration after install.
 
 Template: moviegnomes/subs/opensub/pass
 Type: password
@@ -285,7 +267,7 @@ Description: Selection Error
 Template: moviegnomes/error/sql
 Type: error
 Description: Selection Error
- MySQL doesn't make sense without Kodi.
+ MariaDB doesn't make sense without Kodi.
  .
  Please correct your selections.
 
@@ -298,6 +280,10 @@ Type: error
 Description: Did you make a mistake?
  You selected one of the managers (Radarr, Sonarr, or Lidarr) without selecting SABnzbd.
  This is valid if you have your own download client you'd like to configure, but is unusual.
+ .
+ The use of SABnzbd is highly encouraged due to the automatic cross-container configuration that MovieGnomes
+ does, including API keys and drive mappings. Manually setting this up is an advanced topic and one of the most
+ common causes of errors and user frustration.
 EOF
 
 # Load the template
@@ -332,16 +318,31 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
   4)
     # Ask Library questions
     db_settitle moviegnomes/library/title
+    db_input critical moviegnomes/library/videopath
+    db_input critical moviegnomes/library/musicpath
     db_input critical moviegnomes/library/user
     db_input critical moviegnomes/library/pass
-    db_input critical moviegnomes/library/moviepath
-    db_input critical moviegnomes/library/tvpath
-    db_input critical moviegnomes/library/musicpath
   ;;
 
   5)
     if [ "$KODI" = 1 ]; then
       # Ask Kodi questions
+      if [ "$SQL" = 0 ]; then
+        db_subst moviegnomes/kodi/host DBDESCSHORT "Enter your database hostname"
+        db_subst moviegnomes/kodi/host DBDESCLONG "Your Kodi database is an existing MySQL or MariaDB used to store all Kodi library data.
+This can be changed later by manually editing the /docker/kodi/userdata/advancedsettings.xml file after install."
+      else
+        db_subst moviegnomes/kodi/host DBDESCSHORT "The hostname of the MovieGnomes server"
+        db_subst moviegnomes/kodi/host DBDESCLONG "Configure the MariaDB installation here. The hostname entered here must be the same as the Debian server.
+Accept the default if you are unsure."
+        db_subst moviegnomes/kodi/user DBUSER "This database user will be created."
+        # Check if 
+        db_get moviegnomes/kodi/host
+        if [ "$RET" = "" ]; then
+          db_get netcfg/get_hostname
+          db_set moviegnomes/kodi/host $RET
+        fi
+      fi
       db_settitle moviegnomes/kodi/title
       db_input critical moviegnomes/kodi/host
       db_input critical moviegnomes/kodi/port
@@ -351,14 +352,6 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
   ;;
 
   6)
-    if [ "$SQL" = 1 ]; then
-      # Ask MySQL questions
-      db_settitle moviegnomes/mysql/title
-      db_input critical moviegnomes/mysql/placeholder
-    fi
-  ;;
-
-  7)
     if [ "$SAB" = 1 ]; then
       # Ask Newshosting questions
       db_settitle moviegnomes/news/title
@@ -367,7 +360,7 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
     fi
   ;;
 
-  8)
+  7)
     if [ "$RADARR" = 1 -o "$SONARR" = 1 -o "$LIDARR" = 1 ]; then
       # Ask Indexer questions
       db_settitle moviegnomes/indexer/title
@@ -376,7 +369,7 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
     fi
   ;;
 
-  9)
+  8)
     if [ "$RADARR" = 1 ]; then
       # Ask IMDB questions
       db_settitle moviegnomes/imdb/title
@@ -384,7 +377,7 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
     fi
   ;;
 
-  10)
+  9)
     if [ "$BAZARR" = 1 ]; then
       # Ask Subtitle questions
       db_settitle moviegnomes/subs/title
@@ -414,7 +407,7 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
         [ "$VALUE" = "Kodi" ] && KODI=1
         [ "$VALUE" = "MySQL" ] && SQL=1
       done <<EOF
-# Has to be done this way. If you use a pipe the variables cannot be modified in the resulting subshell
+# Has to be done this way. If you use a pipe any variable modifications don't survive the resulting subshell
 $(echo "$SELECT" | tr ',' '\n' | sed -e 's/^[[:space:]]*//')
 EOF
     fi
