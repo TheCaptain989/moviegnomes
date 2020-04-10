@@ -40,7 +40,7 @@ You need to download VMware Player and one file.  Then run the installation.
  >**NOTE:** If you had/have Hyper-V or Windows Sandbox installed, you'll need to
  >[disable Windows Device Credential Guard](https://communities.vmware.com/thread/604906 "VMware community page")
  >for VMware Player to function properly.
-3. Download [Movie Gnomes VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.4/Movie.Gnomes.VMX.zip) and extract it where you want the
+3. Download [Movie Gnomes VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.4-alpha/Movie.Gnomes.VMX.zip) and extract it where you want the
 virtual machine to run from
 4. To create the virtual machine and start the installation, run:  
   `"C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe" "<vm_path>\Movie Gnomes\Movie Gnomes.vmx"`  
