@@ -13,13 +13,11 @@ if [[ $EUID -ne 0 ]]; then
   echo "ERROR: This script must be run as root. Halting script." 
   exit 1
 fi
-
 # Not expected to be run interactively
 if [[ ! $(tty) =~ "not a tty" ]]; then
   echo "ERROR: Not expected to be running on a terminal. Halting script."
   exit 1
 fi
-
 # Answers to preseed are located here
 if [ ! -f "/var/log/installer/cdebconf/questions.dat" ]; then
   echo "ERROR: Unable to locate cdebconf questions file. Halting script."
@@ -37,6 +35,12 @@ function read_xml {
 function extract_answer {
   echo `awk -F "\n" -v RS="" -v pat="Name: $1" '$0~pat {sub(/.*Value: /,"");sub(/\n.*$/,"");print $0}' /var/log/installer/cdebconf/questions.dat`
 }
+# SED escaping, courtesy of Ed Morton
+#  https://stackoverflow.com/questions/29613304/is-it-possible-to-escape-regex-metacharacters-reliably-with-sed
+quoteSubst() {
+  IFS= read -d '' -r < <(sed -e ':a' -e '$!{N;ba' -e '}' -e 's/[&/\]/\\&/g; s/\n/\\&/g' <<<"$1")
+  printf %s "${REPLY%$'\n'}"
+}
 
 ### Variables
 echo "### Setting Variables ###"
@@ -52,6 +56,7 @@ KODI_ROOT=$DOCKER_ROOT/kodi
 CLEANSUBS_PATH="https://raw.githubusercontent.com/TheCaptain989/bazarr-cleansubs/master"
 THETVDB_PATH="http://mirrors.kodi.tv/addons/leia/metadata.tvdb.com/"
 TZ=$(cat /etc/timezone)  # Only in Debian and derivatives
+TZ=${TZ:-$(timedatectl | awk '/Time zone:/ {print $3}')}  # To catch everyone else
 NEWS_USER=$(extract_answer "moviegnomes/news/user")
 NEWS_PASS=$(extract_answer "moviegnomes/news/hidden")
 NZBGEEK_KEY=$(extract_answer "moviegnomes/indexer/key1")
@@ -86,17 +91,20 @@ EOF
 ### Basic Linux changes
 echo "### Setting up Linux environment and installing base packages ###"
 # Add Normal User to sudoers
-usermod -aG sudo user
+usermod -aG sudo $(getent passwd 1000 | cut -d':' -f1)
 # Modify .bashrc
 echo "alias ll='ls -la --color=auto'" >>/root/.bashrc
-echo "alias ll='ls -la --color=auto'" >>/home/user/.bashrc
+echo "alias ll='ls -la --color=auto'" >>/home/$(getent passwd 1000 | cut -d':' -f1)/.bashrc
 # Set automatic upgrades
 echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
 apt-get -y install unattended-upgrades
 RET=$?; [ "$RET" != 0 ] && echo "WARNING[$RET]: Unable to install the unattended upgrades" || echo "INFO: Installed unattended upgrades"
 dpkg-reconfigure -f noninteractive unattended-upgrades
-apt-get -y update
+# Increase volume
+amixer -qD pulse sset Master 50%
+RET=$?; [ "$RET" != 0 ] && echo "WARNING[$RET]: Unable to set Pulse volume" || echo "INFO: Set Pulse volume to 50%"
 # Install Docker
+apt-get -y update
 # Tried doing this in the preseed and it failed miserably, so here it is
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add - && \
 add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable #Docker repository for Debian 10" && \
@@ -117,9 +125,9 @@ if [ "$RET" = 0 ]; then
 username=$LIB_USER
 password=$LIB_PASS
 EOF
-  # Edit fstab
-  [ "$INST_RADARR" = 1 -o "$INST_SONARR" = 1 ] && mkdir -p $VIDEO_ROOT && echo "${LIB_VIDEOPATH#*:} $VIDEO_ROOT cifs credentials=/root/.smbcredentials,users,rw,uid=1000,gid=1000,noperm 0 0" >>/etc/fstab
-  [ "$INST_LIDARR" = 1 ] && mkdir -p $MUSIC_ROOT && echo "${LIB_MUSICPATH#*:} $MUSIC_ROOT cifs credentials=/root/.smbcredentials,users,rw,uid=1000,gid=1000,noperm 0 0" >>/etc/fstab
+  # Edit fstab; crazy bash parameter expansion gymnastics needed
+  [ "$INST_RADARR" = 1 -o "$INST_SONARR" = 1 ] && mkdir -p "$VIDEO_ROOT" && echo "$(X=${LIB_VIDEOPATH#*:};echo ${X// /\\040}) ${VIDEO_ROOT// /\\040} cifs credentials=/root/.smbcredentials,users,rw,uid=1000,gid=1000,noperm 0 0" >>/etc/fstab
+  [ "$INST_LIDARR" = 1 ] && mkdir -p "$MUSIC_ROOT" && echo "$(X=${LIB_MUSICPATH#*:}; echo ${X// /\\040}) ${MUSIC_ROOT// /\\040} cifs credentials=/root/.smbcredentials,users,rw,uid=1000,gid=1000,noperm 0 0" >>/etc/fstab
   # Mount new file systems
   mount -a
   RET=$?; [ "$RET" != 0 ] && echo "WARNING[$RET]: Unable to mount network drive(s) with given credentials" || echo "INFO: Mounted network drive(s) ${LIB_VIDEOPATH#*:},${LIB_MUSICPATH#*:}"
@@ -132,21 +140,21 @@ if [ "$INST_SAB" = 1 ]; then
   echo "### Installing SABnzbd ###"
   # Prepare the filesystem for container
   useradd -u 1009 -g user -s /bin/bash -m -c "SABnzbd service account" sabnzbd
-  mkdir -p $SABNZBD_ROOT/config
-  chown -R sabnzbd:user $SABNZBD_ROOT
-  setfacl -R -m u::rwx,g::rwx $SABNZBD_ROOT
-  setfacl -R -d -m u::rwx,g::rwx $SABNZBD_ROOT
+  mkdir -p "$SABNZBD_ROOT/config"
+  chown -R sabnzbd:user "$SABNZBD_ROOT"
+  setfacl -R -m u::rwx,g::rwx "$SABNZBD_ROOT"
+  setfacl -R -d -m u::rwx,g::rwx "$SABNZBD_ROOT"
   if [ "$INST_RADARR" = 1 -o "$INST_SONARR" = 1 ] && [ ! -d "$VIDEO_ROOT/#downloads" ]; then
-    mkdir -p $VIDEO_ROOT/#downloads/
-    chown -R sabnzbd:user $VIDEO_ROOT/#downloads/
-    setfacl -R -m u::rwx,g::rwx $VIDEO_ROOT/#downloads/
-    setfacl -R -d -m u::rwx,g::rwx $VIDEO_ROOT/#downloads/
+    mkdir -p "$VIDEO_ROOT/#downloads/"
+    chown -R sabnzbd:user "$VIDEO_ROOT/#downloads/"
+    setfacl -R -m u::rwx,g::rwx "$VIDEO_ROOT/#downloads/"
+    setfacl -R -d -m u::rwx,g::rwx "$VIDEO_ROOT/#downloads/"
   fi
   if [ "$INST_LIDARR" = 1 -a ! -d "$MUSIC_ROOT/#downloads" ]; then
-    mkdir -p $MUSIC_ROOT/#downloads/
-    chown -R sabnzbd:user $MUSIC_ROOT/#downloads/
-    setfacl -R -m u::rwx,g::rwx $MUSIC_ROOT/#downloads/
-    setfacl -R -d -m u::rwx,g::rwx $MUSIC_ROOT/#downloads/
+    mkdir -p "$MUSIC_ROOT/#downloads/"
+    chown -R sabnzbd:user "$MUSIC_ROOT/#downloads/"
+    setfacl -R -m u::rwx,g::rwx "$MUSIC_ROOT/#downloads/"
+    setfacl -R -d -m u::rwx,g::rwx "$MUSIC_ROOT/#downloads/"
   fi
   # Install and run container
   docker pull linuxserver/sabnzbd && \
@@ -155,11 +163,11 @@ if [ "$INST_SAB" = 1 ]; then
     -h sabnzbd \
     -e PUID=1009 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 8080:8080 \
-    -v $SABNZBD_ROOT/config:/config \
-    -v $VIDEO_ROOT/#downloads/:$VIDEO_ROOT/#downloads \
-    -v $MUSIC_ROOT/#downloads/:$MUSIC_ROOT/#downloads \
+    -v "${SABNZBD_ROOT%/}/config":/config \
+    -v "${VIDEO_ROOT%/}/#downloads":"${VIDEO_ROOT%/}/#downloads" \
+    -v "${MUSIC_ROOT%/}/#downloads":"${MUSIC_ROOT%/}/#downloads" \
     --restart unless-stopped \
     --tty \
     linuxserver/sabnzbd && \
@@ -255,18 +263,18 @@ if [ "$INST_RADARR" = 1 ]; then
   echo "### Installing Radarr ###"
   # Prepare the filesystem for container
   useradd -u 1010 -g user -s /bin/bash -m -c "Radarr service account" radarr
-  mkdir -p $RADARR_ROOT
-  chown -R radarr:user $RADARR_ROOT
-  setfacl -m u::rwx,g::rwx $RADARR_ROOT
-  setfacl -d -m u::rwx,g::rwx $RADARR_ROOT
+  mkdir -p "$RADARR_ROOT"
+  chown -R radarr:user "$RADARR_ROOT"
+  setfacl -m u::rwx,g::rwx "$RADARR_ROOT"
+  setfacl -d -m u::rwx,g::rwx "$RADARR_ROOT"
   if [ ! -d "$VIDEO_ROOT/movies" ]; then
-    mkdir -p $VIDEO_ROOT/movies
-    chown -R radarr:user $VIDEO_ROOT/movies
-    setfacl -m u::rwx,g::rwx $VIDEO_ROOT/movies
-    setfacl -d -m u::rwx,g::rwx $VIDEO_ROOT/movies
+    mkdir -p "$VIDEO_ROOT/movies"
+    chown -R radarr:user "$VIDEO_ROOT/movies"
+    setfacl -m u::rwx,g::rwx "$VIDEO_ROOT/movies"
+    setfacl -d -m u::rwx,g::rwx "$VIDEO_ROOT/movies"
   fi
   # Create Recycle Bin if it doesn't exist
-  [ ! -d "$VIDEO_ROOT/#recycle/movies" ] && mkdir -p $VIDEO_ROOT/#recycle/movies && chown -R radarr:user $VIDEO_ROOT/#recycle/movies
+  [ ! -d "$VIDEO_ROOT/#recycle/movies" ] && mkdir -p "$VIDEO_ROOT/#recycle/movies" && chown -R radarr:user "$VIDEO_ROOT/#recycle/movies"
   # Install and run container
   docker pull thecaptain989/radarr && \
   docker create \
@@ -274,7 +282,7 @@ if [ "$INST_RADARR" = 1 ]; then
     -h radarr \
     -e PUID=1010 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 7878:7878 \
     -v $RADARR_ROOT:/config \
     -v $VIDEO_ROOT:$VIDEO_ROOT \
@@ -332,19 +340,19 @@ if [ "$INST_SONARR" = 1 ]; then
   echo "### Installing Sonarr ###"
   # Prepare the filesystem for container
   useradd -u 1011 -g user -s /bin/bash -m -c "Sonarr service account" sonarr
-  mkdir -p $SONARR_ROOT
-  mkdir -p $VIDEO_ROOT/tv
-  chown -R sonarr:user $SONARR_ROOT
-  setfacl -m u::rwx,g::rwx $SONARR_ROOT
-  setfacl -d -m u::rwx,g::rwx $SONARR_ROOT
+  mkdir -p "$SONARR_ROOT"
+  mkdir -p "$VIDEO_ROOT/tv"
+  chown -R sonarr:user "$SONARR_ROOT"
+  setfacl -m u::rwx,g::rwx "$SONARR_ROOT"
+  setfacl -d -m u::rwx,g::rwx "$SONARR_ROOT"
   if [ ! -d "$VIDEO_ROOT/tv" ]; then
-    mkdir -p $VIDEO_ROOT/tv
-    chown -R radarr:user $VIDEO_ROOT/tv
-    setfacl -m u::rwx,g::rwx $VIDEO_ROOT/tv
-    setfacl -d -m u::rwx,g::rwx $VIDEO_ROOT/tv
+    mkdir -p "$VIDEO_ROOT/tv"
+    chown -R radarr:user "$VIDEO_ROOT/tv"
+    setfacl -m u::rwx,g::rwx "$VIDEO_ROOT/tv"
+    setfacl -d -m u::rwx,g::rwx "$VIDEO_ROOT/tv"
   fi
   # Create Recycle Bin if it doesn't exist
-  [ ! -d "$VIDEO_ROOT/#recycle/tv" ] && mkdir -p $VIDEO_ROOT/#recycle/tv && chown -R sonarr:user $VIDEO_ROOT/#recycle/tv
+  [ ! -d "$VIDEO_ROOT/#recycle/tv" ] && mkdir -p "$VIDEO_ROOT/#recycle/tv" && chown -R sonarr:user "$VIDEO_ROOT/#recycle/tv"
   # Install and run container
   docker pull linuxserver/sonarr && \
   docker create \
@@ -352,7 +360,7 @@ if [ "$INST_SONARR" = 1 ]; then
     -h sonarr \
     -e PUID=1011 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 8989:8989 \
     -v $SONARR_ROOT:/config \
     -v $VIDEO_ROOT:$VIDEO_ROOT \
@@ -407,10 +415,10 @@ if [ "$INST_BAZARR" = 1 ]; then
   echo "### Installing Bazarr ###"
   # Prepare the filesystem for container
   useradd -u 1012 -g user -s /bin/bash -m -c "Bazarr service account" bazarr
-  mkdir -p $BAZARR_ROOT
-  chown -R bazarr:user $BAZARR_ROOT
-  setfacl -m u::rwx,g::rwx $BAZARR_ROOT
-  setfacl -d -m u::rwx,g::rwx $BAZARR_ROOT
+  mkdir -p "$BAZARR_ROOT"
+  chown -R bazarr:user "$BAZARR_ROOT"
+  setfacl -m u::rwx,g::rwx "$BAZARR_ROOT"
+  setfacl -d -m u::rwx,g::rwx "$BAZARR_ROOT"
   # Install and run container
   docker pull linuxserver/bazarr && \
   docker create \
@@ -418,7 +426,7 @@ if [ "$INST_BAZARR" = 1 ]; then
     -h bazarr \
     -e PUID=1012 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 6767:6767 \
     -v $BAZARR_ROOT:/config \
     -v $VIDEO_ROOT:$VIDEO_ROOT \
@@ -472,15 +480,15 @@ if [ "$INST_BAZARR" = 1 ]; then
       s/^(only_monitored *=).*/\1 True/
     }")
     /^\[subscene\]/,/^\[.*\]/ {
-      s/^(username *=).*/\1 $SUBS1_USER/
-      s/^(password *=).*/\1 $SUBS1_PASS/
+      s/^(username *=).*/\1 $(quoteSubst "$SUBS1_USER")/
+      s/^(password *=).*/\1 $(quoteSubst "$SUBS1_PASS")/
     }
     /^\[opensubtitles\]/,/^\[.*\]/ {
-      s/^(username *=).*/\1 $SUBS2_USER/
-      s/^(password *=).*/\1 $SUBS2_PASS/
+      s/^(username *=).*/\1 $(quoteSubst "$SUBS2_USER")/
+      s/^(password *=).*/\1 $(quoteSubst "$SUBS2_PASS")/
     }" $BAZARR_ROOT/config/config.ini
     # Get Bazarr subtitle script from GitHub
-    wget -q -P $BAZARR_ROOT $CLEANSUBS_PATH/cleansubs.sh && chown bazarr:user $BAZARR_ROOT/cleansubs.sh
+    wget -q -P "$BAZARR_ROOT" "$CLEANSUBS_PATH/cleansubs.sh" && chown bazarr:user "$BAZARR_ROOT/cleansubs.sh"
     RET=$?; [ "$RET" != 0 ] && echo "WARNING[$RET]: Unable to download cleansubs.sh for Bazarr" || echo "INFO: Downloaded cleansubs.sh for Bazarr"
     docker start bazarr
     echo "INFO: Configured Bazarr container"
@@ -492,12 +500,12 @@ if [ "$INST_LIDARR" = 1 ]; then
   echo "### Installing Lidarr ###"
   # Prepare the filesystem for container
   useradd -u 1013 -g user -s /bin/bash -m -c "Lidarr service account" lidarr
-  mkdir -p $DOCKER_ROOT/lidarr
-  chown -R lidarr:user $DOCKER_ROOT/lidarr
-  setfacl -m u::rwx,g::rwx $DOCKER_ROOT/lidarr
-  setfacl -d -m u::rwx,g::rwx $DOCKER_ROOT/lidarr
+  mkdir -p "$LIDARR_ROOT"
+  chown -R lidarr:user "$LIDARR_ROOT"
+  setfacl -m u::rwx,g::rwx "$LIDARR_ROOT"
+  setfacl -d -m u::rwx,g::rwx "$LIDARR_ROOT"
   # Create Recycle Bins after mount if they don't exist
-  [ ! -d "$MUSIC_ROOT/#recycle" ] && mkdir -p $MUSIC_ROOT/#recycle && chown -R lidarr:user $MUSIC_ROOT/#recycle
+  [ ! -d "$MUSIC_ROOT/#recycle" ] && mkdir -p "$MUSIC_ROOT/#recycle" && chown -R lidarr:user "$MUSIC_ROOT/#recycle"
   # Install and run container
   docker pull thecaptain989/lidarr && \
   docker create \
@@ -505,7 +513,7 @@ if [ "$INST_LIDARR" = 1 ]; then
     -h lidarr \
     -e PUID=1013 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 8686:8686 \
     -v $LIDARR_ROOT:/config \
     -v $MUSIC_ROOT:$MUSIC_ROOT \
@@ -559,10 +567,10 @@ if [ "$INST_KODI" = 1 ]; then
   echo "### Installing Kodi Headless ###"
   # Prepare the filesystem for container
   useradd -u 1014 -g user -s /bin/bash -m -c "Kodi service account" kodi
-  mkdir -p $KODI_ROOT
-  chown -R kodi:user $KODI_ROOT
-  setfacl -m u::rwx,g::rwx $KODI_ROOT
-  setfacl -d -m u::rwx,g::rwx $KODI_ROOT
+  mkdir -p "$KODI_ROOT"
+  chown -R kodi:user "$KODI_ROOT"
+  setfacl -m u::rwx,g::rwx "$KODI_ROOT"
+  setfacl -d -m u::rwx,g::rwx "$KODI_ROOT"
   # Install and run container
   docker pull linuxserver/kodi-headless && \
   docker create \
@@ -570,7 +578,7 @@ if [ "$INST_KODI" = 1 ]; then
     -h kodi-headless \
     -e PUID=1014 \
     -e PGID=1000 \
-    -e TZ=$TZ \
+    -e TZ="$TZ" \
     -p 8085:8080 \
     -v $KODI_ROOT:/config/.kodi \
     --restart unless-stopped \
@@ -588,7 +596,7 @@ if [ "$INST_KODI" = 1 ]; then
   done
   [ "$i" = 10 ] && echo "WARNING: Default Kodi config files not created in $i seconds. Unconfigured container running?" || {
     # Install The TVDB scraper addon
-    curl -s $THETVDB_PATH | \
+    curl -s "$THETVDB_PATH" | \
     awk 'BEGIN {FS=">"}
     # Get a list of available versions from the download page
     /<a href="metadata\.tvdb\.com/ {
@@ -627,10 +635,10 @@ if [ "$INST_KODI" = 1 ]; then
     # Edit the configuration
     sed -i '/<setting id="services.webserver"/ s/ default="true">.*</>true</' $KODI_ROOT/userdata/guisettings.xml
     sed -i '/<videodatabase>/,/<\/musicdatabase>/ {
-      s|<host>.*</host>|<host>'$DB_HOST'</host>|
-      s|<port>.*</port>|<port>'$DB_PORT'</port>|
-      s|<user>.*</user>|<user>'$DB_USER'</user>|
-      s|<pass>.*</pass>|<pass>'$DB_PASS'</pass>|
+      s|<host>.*</host>|<host>'$(quoteSubst "$DB_HOST")'</host>|
+      s|<port>.*</port>|<port>'$(quoteSubst "$DB_PORT")'</port>|
+      s|<user>.*</user>|<user>'$(quoteSubst "$DB_USER")'</user>|
+      s|<pass>.*</pass>|<pass>'$(quoteSubst "$DB_PASS")'</pass>|
     }
     /<webserverpassword>/ s/kodi//' $KODI_ROOT/userdata/advancedsettings.xml
     # Create missing files (not strictly necessary for headless Kodi, but can be nice)
@@ -666,17 +674,15 @@ EOF
 </mediasources>
 docker start kodi-headless
 EOF
-    LIB_TOVIDEOPATH=`echo $LIB_VIDEOPATH | sed "s|//|//$LIB_USER:$LIB_PASS@|"`
-    LIB_TOMUSICPATH=`echo $LIB_MUSICPATH | sed "s|//|//$LIB_USER:$LIB_PASS@|"`
     cat >$KODI_ROOT/userdata/passwords.xml <<EOF
 <passwords>
     <path>
         <from pathversion="1">$LIB_VIDEOPATH</from>
-        <to pathversion="1">$LIB_TOVIDEOPATH</to>
+        <to pathversion="1">${LIB_VIDEOPATH/\/\////${LIB_USER}:${LIB_PASS}@}</to>
     </path>
     <path>
         <from pathversion="1">$LIB_MUSICPATH</from>
-        <to pathversion="1">$LIB_TOMUSICPATH</to>
+        <to pathversion="1">${LIB_MUSICPATH/\/\////${LIB_USER}:${LIB_PASS}@}</to>
     </path>
 </passwords>
 EOF
@@ -721,7 +727,7 @@ docker run --rm \\
   --name watchtower \\
   -t \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  -e TZ=$TZ \\
+  -e TZ="$TZ" \\
   containrrr/watchtower \\
   --run-once \\
   --cleanup \\
@@ -746,16 +752,16 @@ cat >/etc/cron.daily/mg-cleanup <<EOF
 set -e
 
 # Recycle Bin cleanup
-if [ -d $VIDEO_ROOT/#recycle/ ]; then
-  find $VIDEO_ROOT/#recycle/ -mindepth 2 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
+if [ -d "$VIDEO_ROOT/#recycle/" ]; then
+  find "$VIDEO_ROOT/#recycle/" -mindepth 2 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
 fi
 
 # Orphaned downloads cleanup
-if [ -d $VIDEO_ROOT/#downloads/ ]; then
-  find $VIDEO_ROOT/#downloads/ -mindepth 1 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
+if [ -d "$VIDEO_ROOT/#downloads/" ]; then
+  find "$VIDEO_ROOT/#downloads/" -mindepth 1 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
 fi
-if [ -d $MUSIC_ROOT/#downloads/ ]; then
-  find $MUSIC_ROOT/#downloads/ -mindepth 1 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
+if [ -d "$MUSIC_ROOT/#downloads/" ]; then
+  find "$MUSIC_ROOT/#downloads/" -mindepth 1 -depth -mtime 30 -exec bash -c '( echo "Removing: {}" && rm "{}" 2>&1 ) | logger -t mg-cleanup --id=$$ -p syslog.info' \;
 fi
 
 exit 0
@@ -780,7 +786,6 @@ add-apt-repository -y "deb http://download.webmin.com/download/repository sarge 
 apt-get -y update && \
 apt-get -y install webmin
 RET=$?; [ "$RET" != 0 ] && echo "WARNING[$RET]: Unable to install webmin" || echo "INFO: Installed webmin (apt-key warning is normal)"
-
 ## Create webmin backup job
 cat >/etc/webmin/fsdump/276421586475735.dump <<EOF
 beforefok=
@@ -833,7 +838,7 @@ update-rc.d firstboot remove
 rm /etc/init.d/firstboot
 # Create an installation report with INFOs, ERRORs, and WARNINGs
 echo "INFO: Script completed. Runtime: $(($SECONDS/60))m $(($SECONDS%60))s"   # Unique bash feature
-egrep -i 'firstboot\[[0-9]+\]:[^"'\''](((INFO|ERROR|WARNING)(\[[0-9]*\])?:|###)|/root/firstboot\.sh|sed|awk)' /var/log/syslog >/var/log/firstboot.log
+grep -Ei 'firstboot\[[0-9]+\]:[^"'\''](((INFO|ERROR|WARNING)(\[[0-9]*\])?:|###)|/root/firstboot\.sh|sed|awk)' /var/log/syslog >/var/log/firstboot.log
 chmod +r /var/log/firstboot.log
 # Remove self
 rm $0
