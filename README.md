@@ -32,8 +32,8 @@ required options are marked with an asterisk (*).
   - A [shared Kodi database](https://kodi.wiki/view/MySQL/Setting_up_Kodi) **_or_** you can use the MariaDB in provided by MovieGnomes
 
 
-# Installation Instructions
-You need to download VMware Player and one file.  Then run the installation.
+# Installation Summary
+You need to download VMware Player and one file.  Then run the installation.  Please see the [Wiki](https://github.com/TheCaptain989/moviegnomes/wiki) for more detailed instructions.
 
 1. Gather the various login credentials, API keys, etc. required by the installation (see above)
 2. Download and install [VMware Workstation Player](https://www.vmware.com/go/getplayer-win) *(tested with v15.5)*  
