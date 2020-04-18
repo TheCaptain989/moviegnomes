@@ -79,6 +79,3 @@ This would not have been possible without the following:
 [Kodi](https://kodi.tv/)  
 [MariaDB](https://mariadb.org/)  
 [linuxserver.io](https://www.linuxserver.io/)  
-[Newshosting](https://www.newshosting.com/)  
-[NZBgeek](https://nzbgeek.info/)  
-[IMDB](https://www.imdb.com/)  
