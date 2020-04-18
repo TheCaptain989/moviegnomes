@@ -21,8 +21,8 @@ __Capabilities include:__
 
 ## Requirements
 There are a few prerequisites.  Most of these are optional and the configuration can be changed after install.  Absolutely
-required options are marked with an asterisk (*).
-  - A media library location* (e.g. NAS)
+required options are marked with an asterisk (\*).
+  - A media library location\* (e.g. NAS)
   - A [Newshosting](https://www.newshosting.com/) account
   - An [NZBgeek](https://nzbgeek.info/) account
   - A [GingaDADDY](https://www.gingadaddy.com/) account
@@ -33,15 +33,13 @@ required options are marked with an asterisk (*).
 
 
 # Installation Instructions
-You need to download VMware Player and one file.  Then run the installation.
+You need to download VMware Player and one ZIP file, and then run the installation.  A summary of steps is below, and see
+the [Wiki](https://github.com/TheCaptain989/moviegnomes/wiki/Installation "MovieGnomes installation wiki") for more detailed steps.
 
 1. Gather the various login credentials, API keys, etc. required by the installation (see above)
-2. Download and install [VMware Workstation Player](https://www.vmware.com/go/getplayer-win) *(tested with v15.5)*  
- >**NOTE:** If you had/have Hyper-V or Windows Sandbox installed, you'll need to
- >[disable Windows Device Credential Guard](https://communities.vmware.com/thread/604906 "VMware community page")
- >for VMware Player to function properly.
-3. Download [Movie Gnomes VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.4-alpha/Movie.Gnomes.VMX.zip) and extract it where you want the
-virtual machine to run from
+2. Download and install [VMware Workstation Player](https://www.vmware.com/go/getplayer-win)
+3. Download [Movie Gnomes VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.4-alpha/Movie.Gnomes.VMX.zip)
+and extract it where you want the virtual machine to run from
 4. To create the virtual machine and start the installation, run:  
   `"C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe" "<vm_path>\Movie Gnomes\Movie Gnomes.vmx"`  
   Replacing the `<vm_path>` with the directory where you unzipped everything.
