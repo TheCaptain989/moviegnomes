@@ -68,7 +68,7 @@ See the [Wiki](https://github.com/TheCaptain989/moviegnomes/wiki) for more infor
 # Credits
 This would not have been possible without the following:
 
-[VMware Workstation 15 Player](https://www.vmware.com/products/workstation-player/workstation-player-evaluation.html)  
+[VMware](https://www.vmware.com/)  
 [Docker](https://www.docker.com/)  
 [Debian](https://www.debian.org/)  
 [SABnzbd](https://sabnzbd.org/)  
