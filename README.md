@@ -77,6 +77,7 @@ This would not have been possible without the following:
 [Bazarr](https://hub.docker.com/r/linuxserver/bazarr)  
 [Lidarr](https://hub.docker.com/r/thecaptain989/lidarr)  
 [linuxserver/kodi-headless](https://hub.docker.com/r/linuxserver/kodi-headless)  
+[MariaDB](https://mariadb.org/)
 [Newshosting](https://www.newshosting.com/)  
 [NZBgeek](https://nzbgeek.info/)  
 [IMDB](https://www.imdb.com/)  
