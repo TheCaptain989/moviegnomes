@@ -5,7 +5,7 @@ all have movie gnomes.”_
 Now everyone can.
 
 # TheCaptain989’s Movie Gnomes Build **(ALPHA RELEASE)**
-A VMware virtual machine with everything you need to manage your movie, TV, and music library.
+A VMware virtual machine with everything you need to manage your movie, TV, and music library. Everything has been designed to be self-maintaining and most of the configuration decisions have been made for you.
 
 Though it is a Debian Linux VM, it is meant to be run on Windows.  No Linux experience or virtual machine experience necessary!
 The entire thing can be managed via the web browser on your host.
