@@ -12,14 +12,16 @@ db_capb backup
 
 # Create the template file
 cat >/tmp/moviegnomes.dat <<EOF
+# All "hidden" types are used to store passwords in the questions.dat file
+
 ### Splash screens
 Template: moviegnomes/title
 Type: title
-Description: TheCaptain989's Movie Gnomes (ALPHA RELEASE)
+Description: TheCaptain989's MovieGnomes (ALPHA RELEASE)
 
 Template: moviegnomes/splash
 Type: note
-Description: Welcome to TheCaptain989's Movie Gnomes Installation
+Description: Welcome to TheCaptain989's MovieGnomes Installation
  This is a custom Debian Linux install designed to provide and configure all the necessary
  tools to fully automate the management of your movie, TV, and music library.
  These tools include Docker and containers for SABnzbd, Radarr, Sonarr, Bazarr, Lidarr, and Kodi
@@ -38,7 +40,7 @@ Type: note
 Description: Required Services
  This installation requires the use of internet services and a place to store downloaded content.
  Exactly what is required is dependent upon which components you select.
- The default services list is included below, but you may add, remove, or change these post install.
+ The list of default services is below, but you may add, remove, or change these.
  .
  Requirements:
   - A media library location (e.g. NAS or your local PC)
@@ -73,7 +75,7 @@ Description: URLs to Know
 ### Components questions
 Template: moviegnomes/components/title
 Type: title
-Description: Movie Gnomes Components
+Description: MovieGnomes Components
 
 Template: moviegnomes/components/select
 Type: multiselect
@@ -81,7 +83,7 @@ Choices: SABnzbd - Usenet downloader,Radarr - Movie manager and NZB scraper,Sona
 Choices-C: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi,MySQL
 Default: SABnzbd,Radarr,Sonarr,Bazarr,Lidarr,Kodi
 Description: Select the containers you want to install
- Some more information about the containers:
+ Choose which containers to install. Some more information about the containers:
  .
   - SABnzbd is used by Radarr, Sonarr, and Lidarr to download NZB files.
   - Bazarr requires either Radarr or Sonarr.
@@ -164,8 +166,7 @@ Template: moviegnomes/kodi/user
 Type: string
 Default: kodi
 Description: Enter your database username
- Kodi Headless will use these credentials to connect to the database.
- ${DBUSER}
+ \${DBUSER}
 
 Template: moviegnomes/kodi/pass
 Type: password
@@ -178,7 +179,7 @@ Description: NOT TO BE DISPLAYED
 ### Library questions
 Template: moviegnomes/library/title
 Type: title
-Description: Library Information
+Description: Media Library Information
 
 Template: moviegnomes/library/user
 Type: string
@@ -197,11 +198,11 @@ Template: moviegnomes/library/hidden
 Type: string
 Description: NOT TO BE DISPLAYED
 
-Template: moviegnomes/library/videopath
+Template: moviegnomes/library/mediapath
 Type: string
 Default: smb://
-Description: Enter the path to your video library
- This is the fully qualified path to your videos in Linux path format. This will be used to access both movies and TV shows.
+Description: Enter the path to your media library
+ Enter the fully qualified path to your media in Linux path format. This will be used to access movies, TV shows, and music.
  .
  This can be changed later by manually editing the following files post install:
   /docker/kodi/userdata/sources.xml
@@ -209,15 +210,22 @@ Description: Enter the path to your video library
   /docker/kodi/userdata/passwords.xml
   /etc/fstab
  .
- EX: smb://my_nas/Videos/
+ EX: smb://my_nas/media/
 
-Template: moviegnomes/library/musicpath
+Template: moviegnomes/library/moviedir
 Type: string
-Default: smb://
-Description: Enter the path to your music library
- This is the fully qualified path to your music files.
- .
- EX: smb://my_nas/Music/
+Default: /movies
+Description: Enter the subdirectory of your media library where movies are stored
+
+Template: moviegnomes/library/tvdir
+Type: string
+Default: /tv
+Description: Enter the subdirectory of your media library where TV shows are stored
+
+Template: moviegnomes/library/musicdir
+Type: string
+Default: /music
+Description: Enter the subdirectory of your media library where music is stored
 
 ### Bazarr questions
 Template: moviegnomes/subs/title
@@ -318,10 +326,12 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
   4)
     # Ask Library questions
     db_settitle moviegnomes/library/title
-    db_input critical moviegnomes/library/videopath
-    db_input critical moviegnomes/library/musicpath
+    db_input critical moviegnomes/library/mediapath
     db_input critical moviegnomes/library/user
     db_input critical moviegnomes/library/pass
+    db_input critical moviegnomes/library/moviedir
+    db_input critical moviegnomes/library/tvdir
+    db_input critical moviegnomes/library/musicdir
   ;;
 
   5)
@@ -331,6 +341,7 @@ while [ "$STATE" != 0 -a "$STATE" != 11 ]; do
         db_subst moviegnomes/kodi/host DBDESCSHORT "Enter your database hostname"
         db_subst moviegnomes/kodi/host DBDESCLONG "Your Kodi database is an existing MySQL or MariaDB used to store all Kodi library data.
 This can be changed later by manually editing the /docker/kodi/userdata/advancedsettings.xml file after install."
+        db_subst moviegnomes/kodi/user DBUSER ""
       else
         db_subst moviegnomes/kodi/host DBDESCSHORT "The hostname of the MovieGnomes server"
         db_subst moviegnomes/kodi/host DBDESCLONG "Configure the MariaDB installation here. The hostname entered here must be the same as the Debian server.

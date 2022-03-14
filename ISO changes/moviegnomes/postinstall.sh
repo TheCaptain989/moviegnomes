@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copy our firstboot.sh script into place, make is executable
-cp /cdrom/thecaptain989/firstboot.sh /target/root
+cp /cdrom/moviegnomes/firstboot.sh /target/root
 chmod +x /target/root/firstboot.sh
 
 # Create a service that will run our firstboot.sh script
