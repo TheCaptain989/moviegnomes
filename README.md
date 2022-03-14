@@ -38,7 +38,7 @@ the [Wiki](https://github.com/TheCaptain989/moviegnomes/wiki/Installation "Movie
 
 1. Gather the various login credentials, API keys, etc. required by the installation (see above)
 2. Download and install [VMware Workstation Player](https://www.vmware.com/go/getplayer-win)
-3. Download [Movie_Gnomes_VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.5-alpha/Movie_Gnomes_VMX.zip)
+3. Download [MovieGnomes_VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.5-alpha/MovieGnomes_VMX.zip)
 and extract it where you want the virtual machine to run from
 4. To create the virtual machine and start the installation, run:  
   `"C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe" "<vm_path>\MovieGnomes\MovieGnomes.vmx"`  
