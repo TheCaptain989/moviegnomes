@@ -4,7 +4,7 @@ all have movie gnomes.”_
 
 Now everyone can.
 
-# TheCaptain989’s Movie Gnomes Build **(ALPHA RELEASE)**
+# TheCaptain989’s MovieGnomes Build **(ALPHA RELEASE)**
 A VMware virtual machine with everything you need to manage your movie, TV, and music library. Everything has been designed to be self-maintaining and most of the configuration decisions have been made for you.
 
 Though it is a Debian Linux VM, it is meant to be run on Windows.  No Linux experience or virtual machine experience necessary!
@@ -41,7 +41,7 @@ the [Wiki](https://github.com/TheCaptain989/moviegnomes/wiki/Installation "Movie
 3. Download [Movie_Gnomes_VMX.zip](https://github.com/TheCaptain989/moviegnomes/releases/download/v0.5-alpha/Movie_Gnomes_VMX.zip)
 and extract it where you want the virtual machine to run from
 4. To create the virtual machine and start the installation, run:  
-  `"C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe" "<vm_path>\Movie Gnomes\Movie Gnomes.vmx"`  
+  `"C:\Program Files (x86)\VMware\VMware Player\vmplayer.exe" "<vm_path>\MovieGnomes\MovieGnomes.vmx"`  
   Replacing the `<vm_path>` with the directory where you unzipped everything.
 5. Switch to the VM console and complete the guided, automated, Debian installation.
 6. After the VM boots into Gnome, let it run for about 5 minutess to complete the install.
