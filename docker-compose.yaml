@@ -1,6 +1,7 @@
 # Docker Compose for TheCaptain989's MovieGnomes
 #  https://github.com/TheCaptain989/moviegnomes
 
+version: '3'
 name: moviegnomes
 services:
   sabnzbd:
