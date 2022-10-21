@@ -1,0 +1,112 @@
+# Docker Compose for TheCaptain989's MovieGnomes
+#  https://github.com/TheCaptain989/moviegnomes
+
+name: moviegnomes
+services:
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=1009
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /path/to/data:/config
+      - media:/media
+    ports:
+      - 8080:8080/tcp
+    tty:
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    depends_on:
+      - sabnzbd
+    environment:
+      - PUID=1010
+      - PGID=1000
+      - TZ=Europe/London
+      - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
+    volumes:
+      - /path/to/data:/config
+      - media:/media
+    ports:
+      - 7878:7878/tcp
+    tty:
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    depends_on:
+      - sabnzbd
+    environment:
+      - PUID=1011
+      - PGID=1000
+      - TZ=Europe/London
+      - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
+    volumes:
+      - /path/to/data:/config
+      - media:/media
+    ports:
+      - 8989:8989/tcp
+    tty:
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    depends_on:
+      - radarr
+      - sonarr
+    environment:
+      - PUID=1012
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /path/to/data:/config
+      - media:/media
+    ports:
+      - 6767:6767/tcp
+    tty:
+    restart: unless-stopped
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    depends_on:
+      - sabnzbd
+    environment:
+      - PUID=1013
+      - PGID=1000
+      - TZ=Europe/London
+      - DOCKER_MODS="linuxserver/mods:lidarr-flac2mp3"
+    volumes:
+      - /path/to/data:/config
+      - media:/media
+    ports:
+      - 8686:8686/tcp
+    tty:
+    restart: unless-stopped
+
+  kodi:
+    image: matthuisman/kodi-headless:Matrix
+    container_name: kodi
+    profiles:
+      - library
+    environment:
+      - PUID=1014
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /path/to/data:/config
+    ports:
+      - 8085:8080/tcp
+    tty:
+    restart: unless-stopped
+
+volumes:
+  media:
+    external:
+      name: /path/to/media
