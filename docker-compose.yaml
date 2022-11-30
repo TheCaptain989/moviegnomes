@@ -7,12 +7,12 @@ services:
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
-    environment:
+    environment: &default-env
       - PUID=1009
       - PGID=1000
-      - TZ=Europe/London
-    volumes:
-      - /path/to/data:/config
+      - TZ=America/Chicago
+    volumes: &default-vols
+      - ${CONFIG_ROOT_PATH:?err}:/config
       - media:/media
     ports:
       - 8080:8080/tcp
@@ -22,16 +22,15 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    profiles:
+      - movie
     depends_on:
       - sabnzbd
     environment:
+      << : *default-env
       - PUID=1010
-      - PGID=1000
-      - TZ=Europe/London
       - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
-    volumes:
-      - /path/to/data:/config
-      - media:/media
+    volumes: *default-vols
     ports:
       - 7878:7878/tcp
     tty:
@@ -40,16 +39,15 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
+    profiles:
+      - tv
     depends_on:
       - sabnzbd
     environment:
+      << : *default-env
       - PUID=1011
-      - PGID=1000
-      - TZ=Europe/London
       - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
-    volumes:
-      - /path/to/data:/config
-      - media:/media
+    volumes: *default-vols
     ports:
       - 8989:8989/tcp
     tty:
@@ -58,16 +56,16 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
+    profiles:
+      - movie
+      - tv
     depends_on:
       - radarr
       - sonarr
     environment:
+      << : *default-env
       - PUID=1012
-      - PGID=1000
-      - TZ=Europe/London
-    volumes:
-      - /path/to/data:/config
-      - media:/media
+    volumes: *default-vols
     ports:
       - 6767:6767/tcp
     tty:
@@ -76,16 +74,15 @@ services:
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
+    profiles:
+      - music
     depends_on:
       - sabnzbd
     environment:
+      << : *default-env
       - PUID=1013
-      - PGID=1000
-      - TZ=Europe/London
       - DOCKER_MODS="linuxserver/mods:lidarr-flac2mp3"
-    volumes:
-      - /path/to/data:/config
-      - media:/media
+    volumes: *default-vols
     ports:
       - 8686:8686/tcp
     tty:
@@ -95,13 +92,12 @@ services:
     image: matthuisman/kodi-headless:Matrix
     container_name: kodi
     profiles:
-      - library
+      - stream
     environment:
+      << : *default-env
       - PUID=1014
-      - PGID=1000
-      - TZ=Europe/London
     volumes:
-      - /path/to/data:/config
+      - ${CONFIG_ROOT_PATH:?err}:/config
     ports:
       - 8085:8080/tcp
     tty:
@@ -110,4 +106,8 @@ services:
 volumes:
   media:
     external:
-      name: /path/to/media
+      name: ${MEDIA_ROOT_PATH:?err}
+      
+secrets:
+  passwords:
+    file: ./logins.xml
