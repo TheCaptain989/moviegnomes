@@ -3,25 +3,47 @@
 
 version: '3'
 name: moviegnomes
+
+volumes:
+  config:
+    name: ${CONFIG_ROOT_PATH:?err}
+  media:
+    external:
+      name: ${MEDIA_ROOT_PATH:?err}
+     
+secrets:
+  logins:
+    file: ./logins.xml
+
+networks:
+  net:
+    driver: bridge
+
 services:
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
+    platform: linux
     environment: &default-env
       - PUID=1009
       - PGID=1000
       - TZ=America/Chicago
     volumes: &default-vols
-      - ${CONFIG_ROOT_PATH:?err}:/config
+      - config:/config
       - media:/media
+    networks:
+      - net
     ports:
       - 8080:8080/tcp
+    secrets:
+      - logins
     tty:
     restart: unless-stopped
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    platform: linux
     profiles:
       - movie
     depends_on:
@@ -31,6 +53,8 @@ services:
       - PUID=1010
       - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
     volumes: *default-vols
+    networks:
+      - net
     ports:
       - 7878:7878/tcp
     tty:
@@ -39,6 +63,7 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
+    platform: linux
     profiles:
       - tv
     depends_on:
@@ -48,6 +73,8 @@ services:
       - PUID=1011
       - DOCKER_MODS="linuxserver/mods:radarr-striptracks"
     volumes: *default-vols
+    networks:
+      - net
     ports:
       - 8989:8989/tcp
     tty:
@@ -56,6 +83,7 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
+    platform: linux
     profiles:
       - movie
       - tv
@@ -66,6 +94,8 @@ services:
       << : *default-env
       - PUID=1012
     volumes: *default-vols
+    networks:
+      - net
     ports:
       - 6767:6767/tcp
     tty:
@@ -74,6 +104,7 @@ services:
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
+    platform: linux
     profiles:
       - music
     depends_on:
@@ -83,6 +114,8 @@ services:
       - PUID=1013
       - DOCKER_MODS="linuxserver/mods:lidarr-flac2mp3"
     volumes: *default-vols
+    networks:
+      - net
     ports:
       - 8686:8686/tcp
     tty:
@@ -91,6 +124,7 @@ services:
   kodi:
     image: matthuisman/kodi-headless:Matrix
     container_name: kodi
+    platform: linux
     profiles:
       - stream
     environment:
@@ -98,16 +132,9 @@ services:
       - PUID=1014
     volumes:
       - ${CONFIG_ROOT_PATH:?err}:/config
+    networks:
+      - net
     ports:
       - 8085:8080/tcp
     tty:
     restart: unless-stopped
-
-volumes:
-  media:
-    external:
-      name: ${MEDIA_ROOT_PATH:?err}
-      
-secrets:
-  passwords:
-    file: ./logins.xml
